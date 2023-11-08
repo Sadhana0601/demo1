@@ -1,0 +1,261 @@
+
+https://docs.chef.io/workstation/install_workstation/
+
+*************************CHEF CONFIGURATION********************************************
+Create a linux instance in AWS and connect via putty and puttygen
+*) ec2-user
+*)sudo su root
+*)yum update all
+*)wget https://packages.chef.io/files/stable/chef-workstation/21.10.640/el/7/chef-workstation-21.10.640-1.el7.x86_64.rpm
+*)yum insatll chef -w (click on tab)
+*)which chef 
+*)chef --version
+*)mkdir cookbooks
+*)cd cookbooks
+------generation of tree-----
+*)chef generate cookbook Pulihora
+*)yum install tree -y
+*)tree
+*)cd Pulihora
+*)chef generate recipe Pulihora
+*)tree
+*)cd ..
+*) vi Pulihora/recipes/groundnut.rb
+	press i
+	file '/myfile' do
+	content 'welcome'
+	action :create
+	end
+	esc :wq
+*)chef exec ruby -c Pulihora/recepies/groundnut.rb
+*)chef-client -zr "recipe[Pulihora::Groundnut]"
+*)ls
+*)cat /myfile
+	welcome
+*)yum remove -y
+
+
+https://techexpert.tips/ansible/ansible-installation-cloud-aws-ec2/
+*******************************************ANSIBLE**************************************************************
+==>Create instance>>amazon linux>>t2 micro>>3 instance>>scroll down in optional wrtie these three line (#!/bin/bash     yum update all       sudo su root)
+==>connect 3 instance with different colours  and name one instance as master remaining as node1 and node2
+---------------------------------in all 3 instance------------------------------------------------------------------------------------------------------
+*)sudo su root
+On ubuntu Machine:
+apt-get update
+apt-get install apt-transport-https wget gnupg
+apt-add-repository ppa:ansible/ansible
+apt-get update
+apt-get install ansible
+ansible --version
+
+
+
+
+
+
+
+
+
+
+yum install epel-release -y
+yum install ansible -y
+
+                                                ANSIBLE-NEW(amz m/c:5.10)
+------------------------------------------------------------------------------------------------------------------------------------------------------
+sudo amazon-linux-extras install epel
+yum install ansible -y
+yum install git python python-level python-pip openssl ansible -y
+
+------------------------------------in master------------------------------------------------------------------------------------------------------------
+*)vi /etc/ansible/hosts
+	press i
+	below example1
+	[demo]pass
+	172.31.46.238(private key of node1)
+	172.31.34.169(private key of node2)
+	esc :wq
+*)vi /etc/ansible/ansible.cfg
+	press i
+	remove (#) infront of INVENTORY
+	remove (#) infront of sudo
+	esc :wq
+-------------------------in all 3 instance -----------------------------------------------------------------------------------------------------------
+*)useradd ansible
+*)passwd ansible
+	123
+	123
+*)su - ansible
+*)visudo 
+	press ivisudo
+	(scroll down below root)
+	ansible ALL=(ALL) NOPASSWD: ALL
+	esc :wq
+*)su - ansible
+*)sudo yum install git -y 
+*)sudo yum install httpd -y
+*)cntrl+d
+
+ssh private-ip for node1
+
+
+*)vim /etc/ssh/sshd_config
+	press i 
+	(scroll down)
+	remove (#) before --allow root permission line-38
+	remove(#) before --password authentication yes line-61
+	keep(#)before--password authentication no line -63
+	esc:wq
+*)service sshd restart
+*)su - ansible
+--------------------------in master----------------------------------------------------------------------------------------------------------
+*)ssh (paste private ip of node 1)
+*)ssh (paste private ip of node 2)
+(create a file in node 2)
+*)touch file
+ls
+==>go to node 2 instance and type there ls we can able to see the file which we create in master node2
+*)cntrl+d
+*)su - ansible
+*)ssh-keygen
+	enter
+	enter
+	we got an image
+*)ssh-keygen
+	enter
+	enter
+	we got an image
+*)ls -a
+*)cd .ssh
+*)ls
+*)ssh-copy-id ansible@(private ip of node 1)
+	it is asking for pass
+*)ssh-copy-id ansible@(private ip of node 2)
+	it is asking for pass
+*)cntrl+d (until we got root)
+*)su - ansible
+*)ssh (node1 private ip)(it doesn't ask any pass now)
+*)cntrl+d
+*)su - ansible
+*)ansible all --list-hosts
+*)ansible demo --list-hosts
+*)ansible demo[0] --list-hosts
+*)ansible demo[1] --list-hosts
+*)ansible demo[0:1] --list-hosts
+-------AD-HOCS COMMANDS------
+*) ansible all -a "touch file"
+*) ansible demo -a "yum install httpd -y " 
+*) ansible demo -a "ls"
+*) which httpd (check in all 3 nodes)
+*) sudo yum remove httpd
+-------ANSIBLE MODULES--------------
+*)ansible demo -b -m yum -a "pkg=httpd state=present"
+*)ansible demo -b -m yum -a "pkg=httpd state=latest"
+*)ansible demo -b -m service -a "name state=started"
+*) which httpd (check in all 3 instance)
+***************************************CREATE PLAYBOOK*************************************************
+------in master-------------------
+*)su - ansible
+*)vi target1.yml
+	press i
+	--- # MY FIRST PLAYBOOK
+	- hosts: demo
+	  user: ansible
+ 	  become: yes
+	  connection: ssh
+                        gather_facts: yes
+	esc :wq
+*)ansible-playbook target1.yml
+*) vi target2.yml
+	press i
+	--- # MY SECOND PLAYBOOK
+	- hosts: demo
+  	  user: ansible
+	  become: yes
+	  connection: ssh
+	  tasks:
+    	       - name: Install HTTPD on centos 7
+                               action: yum name=httpd state=installed
+	esc :wq
+*)ansible-playbook target2.yml
+*)vi target3.yml
+	press i
+	--- # MY VARIABLE
+	- hosts: demo
+  	  user: ansible
+	  become: yes
+  	  connection: ssh
+   	 vars:
+    	        pkgname: httpd
+ 	 task:
+    	       - name: install HTTPD server on centos 7
+                               action: yum name='{{pkgname}}' state=installed
+	esc :wq
+*)ansible-playbook target3.yml
+*)vi target4.yml
+	press i
+	--- # MY PLAYBOOK HANDLERS
+	- hosts: demo
+  	  user: ansible
+ 	 become: yes
+  	connection: ssh
+  	tasks:
+    	       -  name: install httpd server on centos
+    	          action: yum name=httpd state=installed
+    	          notify: restart httpd
+  	handlers:
+ 	      -  name: restart httpd
+    	          action: service name=httpd state=restarted
+	esc :wq
+*)ansible-playbook target4.yml
+*)vi target5.yml
+	press i
+	--- # MY LOOP PLAYBOOK
+	- hosts: demo
+  	  user: ansible
+	  become: yes
+ 	 connection: ssh
+	 tasks:
+    	        -  name: add list of nodes
+   	           user: name='{{item}}' state=present
+     	           with_items:
+              	                        - Teju
+            	                        - Hari
+                                              - Karthik
+	esc :wq
+*)ansible-playbook target5.yml
+*)vi target6.yml
+	press i
+	--- # MY CONDITION PLAYBOOK
+	- hosts: demo
+ 	  user: ansible
+	  become: yes
+ 	 connection: ssh
+ 	 tasks:
+  	         - name: Install apache server for debian family
+       	           command: apt-get -y install apache2
+     	           when: ansible_os_family == "debian"
+      	       - name: install apache server for redhat family
+      	         command: yum -y install httpd
+ 	         when: ansible_os_family == "redhat"
+	esc :wq
+*)ansible-playbook target6.yml
+===> after creating playboos in master we need check in other nodes 
+*) which httpd 
+==> we can abel to see in other nodes also ,even we install httpd in master only
+
+	
+	
+
+	
+
+
+	
+	
+
+
+
+
+
+
+
